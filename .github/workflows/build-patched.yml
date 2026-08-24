@@ -52,7 +52,7 @@ jobs:
 
       - name: Build sui binary
         run: |
-          BUILD_TAGS="with_quic,with_grpc,with_utls,with_acme,with_gvisor,with_tailscale,with_naive_outbound"
+          BUILD_TAGS="with_quic,with_grpc,with_utls,with_acme,with_gvisor,with_naive_outbound"
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
             -ldflags="-s -w -checklinkname=0" \
             -tags "$BUILD_TAGS" \
