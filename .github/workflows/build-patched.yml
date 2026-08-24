@@ -1,0 +1,53 @@
+name: Build patched sui (linux/amd64)
+
+on:
+  push:
+    branches: [ "fix/hysteria2-userid-stable" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+          mkdir -p ../web/html
+          cp -r dist/* ../web/html/
+
+      - name: Build sui binary
+        run: |
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w" \
+            -o sui-patched-linux-amd64 \
+            .
+
+      - name: Show binary info
+        run: |
+          ls -lh sui-patched-linux-amd64
+          sha256sum sui-patched-linux-amd64
+          ./sui-patched-linux-amd64 -v
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sui-patched-linux-amd64
+          path: sui-patched-linux-amd64
+          retention-days: 7
