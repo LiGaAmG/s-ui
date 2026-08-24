@@ -6,18 +6,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-frontend:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -29,13 +23,44 @@ jobs:
           cd frontend
           npm install
           npm run build
-          mkdir -p ../web/html
-          cp -r dist/* ../web/html/
 
-      - name: Build sui binary
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+  build:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: web/html
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install musl toolchain
         run: |
-          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-s -w" \
+          sudo apt-get update -qq
+          sudo apt-get install -y musl-tools gcc-multilib
+
+      - name: Build sui binary (with all required tags)
+        run: |
+          BUILD_TAGS="with_quic,with_grpc,with_utls,with_acme,with_gvisor,badlinkname,tfogo_checklinkname0,with_tailscale,with_naive_outbound"
+          CC=musl-gcc CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w -linkmode external -extldflags '-static'" \
+            -tags "$BUILD_TAGS" \
             -o sui-patched-linux-amd64 \
             .
 
@@ -43,6 +68,7 @@ jobs:
         run: |
           ls -lh sui-patched-linux-amd64
           sha256sum sui-patched-linux-amd64
+          file sui-patched-linux-amd64
           ./sui-patched-linux-amd64 -v
 
       - name: Upload artifact
