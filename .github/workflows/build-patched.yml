@@ -50,16 +50,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install musl toolchain
+      - name: Build sui binary
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y musl-tools gcc-multilib
-
-      - name: Build sui binary (with all required tags)
-        run: |
-          BUILD_TAGS="with_quic,with_grpc,with_utls,with_acme,with_gvisor,badlinkname,tfogo_checklinkname0,with_tailscale,with_naive_outbound"
-          CC=musl-gcc CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-s -w -linkmode external -extldflags '-static'" \
+          BUILD_TAGS="with_quic,with_grpc,with_utls,with_acme,with_gvisor,with_tailscale,with_naive_outbound"
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w -checklinkname=0" \
             -tags "$BUILD_TAGS" \
             -o sui-patched-linux-amd64 \
             .
